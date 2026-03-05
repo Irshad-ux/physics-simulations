@@ -855,5 +855,26 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyC')  myP5.clear_();
 });
 </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<script>
+
+const supabaseClient = supabase.createClient(
+"YOUR_PROJECT_URL",
+"YOUR_PUBLISHABLE_KEY"
+)
+
+async function saveResult(angle, velocity){
+
+await supabaseClient
+.from("students")
+.insert([
+{ angle: angle, velocity: velocity }
+])
+
+}
+
+</script>
+  
 </body>
 </html>
