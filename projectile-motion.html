@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projectile Motion Lab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Kode+Mono:wght@400;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0b0f1a;
+    --panel:    #111827;
+    --border:   #1e293b;
+    --accent:   #f97316;
+    --accent2:  #38bdf8;
+    --green:    #4ade80;
+    --text:     #f1f5f9;
+    --muted:    #64748b;
+    --track:    #1e293b;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ─── TOP BAR ─── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: rgba(11,15,26,0.95);
+    backdrop-filter: blur(10px);
+    z-index: 10;
+  }
+  .logo {
+    font-family: 'Kode Mono', monospace;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .logo span { color: var(--accent); }
+  .formula {
+    font-family: 'Kode Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+  .formula b { color: var(--accent2); }
+
+  /* ─── LAYOUT ─── */
+  .workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 20px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    overflow-y: auto;
+  }
+
+  .section-label {
+    font-family: 'Kode Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  /* ─── SLIDERS ─── */
+  .ctrl-block { display: flex; flex-direction: column; gap: 8px; }
+
+  .ctrl-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .ctrl-name { font-size: 13px; font-weight: 500; }
+  .ctrl-val {
+    font-family: 'Kode Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  .slider-wrap { position: relative; height: 28px; display: flex; align-items: center; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--track);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px rgba(249,115,22,0.2);
+    transition: box-shadow 0.15s;
+    cursor: grab;
+  }
+  input[type=range]::-webkit-slider-thumb:active { cursor: grabbing; box-shadow: 0 0 0 6px rgba(249,115,22,0.3); }
+  input[type=range]#velSlider::-webkit-slider-thumb { background: var(--accent2); box-shadow: 0 0 0 3px rgba(56,189,248,0.2); }
+  input[type=range]#velSlider:active::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(56,189,248,0.3); }
+
+  .tick-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'Kode Mono', monospace;
+    padding: 0 2px;
+  }
+
+  /* ─── STATS ─── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    transition: border-color 0.2s;
+  }
+  .stat-card.highlight { border-color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .stat-value {
+    font-family: 'Kode Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .stat-value.orange { color: var(--accent); }
+  .stat-value.blue   { color: var(--accent2); }
+  .stat-value.green  { color: var(--green); }
+
+  /* ─── BUTTONS ─── */
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.3px;
+  }
+  .btn-fire {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-fire:hover { background: #fb923c; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(249,115,22,0.4); }
+  .btn-fire:active { transform: translateY(0); }
+  .btn-clear {
+    background: var(--border);
+    color: var(--muted);
+  }
+  .btn-clear:hover { background: #2d3748; color: var(--text); }
+
+  /* ─── TOGGLE ─── */
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .toggle {
+    position: relative;
+    width: 36px; height: 20px;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    left: 3px; top: 3px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle input:checked + .toggle-track { background: rgba(249,115,22,0.3); }
+  .toggle input:checked + .toggle-track::after { transform: translateX(16px); background: var(--accent); }
+
+  /* ─── CANVAS ─── */
+  #canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  #canvas-container canvas { display: block; }
+
+  /* ─── LEGEND ─── */
+  .legend {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    background: rgba(17,24,39,0.9);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    display: flex;
+    gap: 14px;
+    backdrop-filter: blur(6px);
+  }
+  .leg-item { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .leg-line { width: 20px; height: 2px; border-radius: 2px; }
+
+  /* ─── EQUATIONS STRIP ─── */
+  .eq-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 2px;
+  }
+  .eq-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+  .eq-sym { font-family: 'Kode Mono', monospace; color: var(--accent2); }
+  .eq-val { font-family: 'Kode Mono', monospace; color: var(--text); font-size: 11px; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Projectile<span>Lab</span></div>
+  <div class="formula">
+    x = v₀·cos(θ)·t &nbsp;|&nbsp; y = v₀·sin(θ)·t − <b>½g</b>t²
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <div>
+      <div class="section-label">Launch Parameters</div>
+      <div class="ctrl-block">
+        <div class="ctrl-row">
+          <span class="ctrl-name">Angle θ</span>
+          <span class="ctrl-val" id="angleVal">45°</span>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="angleSlider" min="1" max="89" value="45">
+        </div>
+        <div class="tick-row"><span>1°</span><span>45°</span><span>89°</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="ctrl-block">
+        <div class="ctrl-row">
+          <span class="ctrl-name">Initial Velocity v₀</span>
+          <span class="ctrl-val" style="color:var(--accent2)" id="velVal">50 m/s</span>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="velSlider" min="5" max="120" value="50">
+        </div>
+        <div class="tick-row"><span>5</span><span>60</span><span>120 m/s</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="ctrl-block">
+        <div class="ctrl-row">
+          <span class="ctrl-name">Gravity g</span>
+          <span class="ctrl-val" style="color:var(--green)" id="gravVal">9.8 m/s²</span>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="gravSlider" min="10" max="250" value="98">
+        </div>
+        <div class="tick-row"><span>1.0</span><span>9.8</span><span>25 m/s²</span></div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-fire" id="fireBtn">🚀 Launch</button>
+      <button class="btn btn-clear" id="clearBtn">Clear</button>
+    </div>
+
+    <div>
+      <div class="section-label" style="margin-bottom:10px">Live Stats</div>
+      <div class="stats-grid">
+        <div class="stat-card highlight" id="rangeCard">
+          <div class="stat-label">Range</div>
+          <div class="stat-value orange" id="statRange">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Max Height</div>
+          <div class="stat-value blue" id="statHeight">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Flight Time</div>
+          <div class="stat-value green" id="statTime">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Peak Speed</div>
+          <div class="stat-value" id="statSpeed">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label" style="margin-bottom:8px">Kinematic Equations</div>
+      <div class="eq-strip">
+        <div class="eq-row"><span class="eq-sym">Range R =</span><span class="eq-val" id="eqR">v²sin2θ / g</span></div>
+        <div class="eq-row"><span class="eq-sym">H_max =</span><span class="eq-val" id="eqH">v²sin²θ / 2g</span></div>
+        <div class="eq-row"><span class="eq-sym">T_total =</span><span class="eq-val" id="eqT">2v·sinθ / g</span></div>
+        <div class="eq-row"><span class="eq-sym">vₓ =</span><span class="eq-val" id="eqVx">v·cosθ</span></div>
+        <div class="eq-row"><span class="eq-sym">v_y0 =</span><span class="eq-val" id="eqVy">v·sinθ</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label" style="margin-bottom:8px">Display Options</div>
+      <div class="toggle-row">
+        <span>Show velocity vectors</span>
+        <label class="toggle"><input type="checkbox" id="showVectors" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="toggle-row" style="margin-top:8px">
+        <span>Ghost trajectories</span>
+        <label class="toggle"><input type="checkbox" id="showGhosts" checked><span class="toggle-track"></span></label>
+      </div>
+      <div class="toggle-row" style="margin-top:8px">
+        <span>Grid overlay</span>
+        <label class="toggle"><input type="checkbox" id="showGrid" checked><span class="toggle-track"></span></label>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── CANVAS ── -->
+  <div id="canvas-container">
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:#f97316"></div><span>Projectile</span></div>
+      <div class="leg-item"><div class="leg-line" style="background:#f97316;opacity:0.6"></div><span>Trajectory</span></div>
+      <div class="leg-item"><div class="leg-line" style="background:#38bdf8;opacity:0.5;border-top:2px dashed #38bdf8"></div><span>Max Height</span></div>
+      <div class="leg-item"><div class="leg-line" style="background:#4ade80;opacity:0.5;border-top:2px dashed #4ade80"></div><span>Range</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let angle    = 45;
+let velocity = 50;
+let gravity  = 9.8;
+
+let projectile = null;
+let ghosts     = [];
+let launched   = false;
+
+const SCALE  = 4;   // pixels per metre
+const ORIGIN = { x: 0, y: 0 }; // set in setup
+
+// ─── p5 sketch ───────────────────────────────────────────────────────────────
+const sketch = (p) => {
+
+  let W, H;
+  let groundY;
+  let bg, trailGraphics;
+
+  p.setup = () => {
+    const container = document.getElementById('canvas-container');
+    W = container.clientWidth;
+    H = container.clientHeight;
+    const cnv = p.createCanvas(W, H);
+    cnv.parent('canvas-container');
+    ORIGIN.x = 80;
+    ORIGIN.y = H - 70;
+    groundY  = H - 70;
+
+    trailGraphics = p.createGraphics(W, H);
+    trailGraphics.clear();
+
+    p.textFont('Kode Mono');
+    updateEquations();
+  };
+
+  p.windowResized = () => {
+    const container = document.getElementById('canvas-container');
+    W = container.clientWidth;
+    H = container.clientHeight;
+    p.resizeCanvas(W, H);
+    ORIGIN.y = H - 70;
+    groundY  = H - 70;
+
+    trailGraphics.resizeCanvas(W, H);
+    trailGraphics.clear();
+    redrawGhosts();
+  };
+
+  p.draw = () => {
+    // Sky gradient background
+    p.background(11, 15, 26);
+
+    const showGrid    = document.getElementById('showGrid').checked;
+    const showGhosts  = document.getElementById('showGhosts').checked;
+    const showVectors = document.getElementById('showVectors').checked;
+
+    if (showGrid)   drawGrid();
+
+    drawGround();
+
+    if (showGhosts) p.image(trailGraphics, 0, 0);
+
+    // Preview angle arc
+    if (!launched || (projectile && projectile.landed)) {
+      drawAnglePreview();
+    }
+
+    if (projectile) {
+      projectile.update();
+      projectile.drawTrail();
+      projectile.drawBall();
+      if (showVectors) projectile.drawVectors();
+      if (projectile.landed) {
+        drawRangeAnnotation(projectile);
+        drawHeightAnnotation(projectile);
+      }
+    }
+  };
+
+  // ── Grid ──────────────────────────────────────────────────────────────────
+  function drawGrid() {
+    const step = 50 * SCALE; // 50m grid lines
+    p.stroke(30, 41, 59, 160);
+    p.strokeWeight(1);
+
+    for (let x = ORIGIN.x; x < W; x += step) {
+      p.line(x, 0, x, groundY);
+      // label
+      p.fill(50, 65, 90);
+      p.noStroke();
+      p.textSize(9);
+      p.textAlign(p.CENTER);
+      const metres = Math.round((x - ORIGIN.x) / SCALE);
+      if (metres > 0) p.text(metres + 'm', x, groundY + 18);
+    }
+    for (let y = groundY; y > 0; y -= step) {
+      p.stroke(30, 41, 59, 160);
+      p.strokeWeight(1);
+      p.line(ORIGIN.x, y, W, y);
+      p.fill(50, 65, 90);
+      p.noStroke();
+      p.textSize(9);
+      p.textAlign(p.RIGHT);
+      const metres = Math.round((groundY - y) / SCALE);
+      if (metres > 0) p.text(metres + 'm', ORIGIN.x - 6, y + 3);
+    }
+  }
+
+  // ── Ground ────────────────────────────────────────────────────────────────
+  function drawGround() {
+    // Axis lines
+    p.stroke(30, 41, 59);
+    p.strokeWeight(2);
+    p.line(ORIGIN.x, groundY, W, groundY);       // X-axis
+    p.line(ORIGIN.x, 10, ORIGIN.x, groundY);    // Y-axis
+
+    // Ground fill
+    p.noStroke();
+    p.fill(15, 23, 42);
+    p.rect(0, groundY, W, H - groundY);
+
+    // Ground line
+    p.stroke(30, 50, 80);
+    p.strokeWeight(2);
+    p.line(0, groundY, W, groundY);
+
+    // Origin dot
+    p.fill(100, 116, 139);
+    p.noStroke();
+    p.ellipse(ORIGIN.x, groundY, 8, 8);
+
+    // Axis arrows
+    p.fill(50, 65, 90);
+    p.noStroke();
+    p.textSize(11);
+    p.textAlign(p.LEFT);
+    p.text('→ x (m)', W - 50, groundY + 18);
+    p.textAlign(p.LEFT);
+    p.text('↑ y (m)', ORIGIN.x + 6, 22);
+  }
+
+  // ── Angle preview ─────────────────────────────────────────────────────────
+  function drawAnglePreview() {
+    const rad  = p.radians(angle);
+    const len  = 70;
+    const ex   = ORIGIN.x + Math.cos(rad) * len;
+    const ey   = groundY  - Math.sin(rad) * len;
+
+    // Arrow
+    p.stroke(249, 115, 22, 180);
+    p.strokeWeight(2);
+    p.fill(249, 115, 22, 180);
+    drawArrow(ORIGIN.x, groundY, ex, ey);
+
+    // Arc
+    p.noFill();
+    p.stroke(249, 115, 22, 80);
+    p.strokeWeight(1.5);
+    p.arc(ORIGIN.x, groundY, 56, 56, -rad, 0);
+
+    // Angle label
+    const midRad = rad / 2;
+    p.noStroke();
+    p.fill(249, 115, 22, 220);
+    p.textSize(11);
+    p.textAlign(p.LEFT);
+    p.text(angle + '°', ORIGIN.x + 32 * Math.cos(midRad) + 4, groundY - 32 * Math.sin(midRad) + 4);
+
+    // Vx / Vy components (faint)
+    const vScale = 1.1;
+    const vx = ORIGIN.x + Math.cos(rad) * velocity * vScale;
+    const vy = groundY  - Math.sin(rad) * velocity * vScale;
+    p.stroke(56, 189, 248, 50);
+    p.strokeWeight(1);
+    p.setLineDash([4, 4]);
+    p.line(ORIGIN.x, groundY, vx, groundY);
+    p.line(vx, groundY, vx, vy);
+    p.setLineDash([]);
+  }
+
+  // ── Annotations ───────────────────────────────────────────────────────────
+  function drawRangeAnnotation(proj) {
+    const rx = ORIGIN.x + proj.range * SCALE;
+    if (rx > W) return;
+
+    // Range bracket
+    p.stroke(74, 222, 128, 180);
+    p.strokeWeight(1.5);
+    p.setLineDash([5, 4]);
+    p.line(ORIGIN.x, groundY - 28, rx, groundY - 28);
+    p.setLineDash([]);
+    p.strokeWeight(1.5);
+    p.line(ORIGIN.x, groundY - 34, ORIGIN.x, groundY - 22);
+    p.line(rx,       groundY - 34, rx,        groundY - 22);
+
+    p.noStroke();
+    p.fill(74, 222, 128, 220);
+    p.textSize(11);
+    p.textAlign(p.CENTER);
+    p.text('R = ' + proj.range.toFixed(1) + ' m', (ORIGIN.x + rx) / 2, groundY - 35);
+
+    // Landing dot
+    p.fill(74, 222, 128);
+    p.noStroke();
+    p.ellipse(rx, groundY, 10, 10);
+    p.fill(74, 222, 128, 60);
+    p.ellipse(rx, groundY, 22, 22);
+  }
+
+  function drawHeightAnnotation(proj) {
+    const hpx  = ORIGIN.x + proj.peakX * SCALE;
+    const hpy  = groundY  - proj.maxHeight * SCALE;
+    if (hpx > W || hpy < 10) return;
+
+    p.stroke(56, 189, 248, 150);
+    p.strokeWeight(1.5);
+    p.setLineDash([5, 4]);
+    p.line(hpx, groundY, hpx, hpy);
+    p.setLineDash([]);
+
+    // Triangle peak marker
+    p.fill(56, 189, 248, 200);
+    p.noStroke();
+    p.triangle(hpx, hpy - 2, hpx - 6, hpy + 10, hpx + 6, hpy + 10);
+    p.textSize(11);
+    p.textAlign(p.LEFT);
+    p.text('H = ' + proj.maxHeight.toFixed(1) + ' m', hpx + 8, hpy + 4);
+  }
+
+  // ── Arrow helper ──────────────────────────────────────────────────────────
+  function drawArrow(x1, y1, x2, y2) {
+    p.line(x1, y1, x2, y2);
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    p.push();
+    p.translate(x2, y2);
+    p.rotate(ang);
+    p.triangle(0, 0, -10, -4, -10, 4);
+    p.pop();
+  }
+
+  // ── Ghost trails ──────────────────────────────────────────────────────────
+  function redrawGhosts() {
+    trailGraphics.clear();
+    ghosts.forEach((g, i) => {
+      const alpha = p.map(i, 0, ghosts.length, 30, 90);
+      trailGraphics.stroke(249, 115, 22, alpha);
+      trailGraphics.strokeWeight(1.5);
+      trailGraphics.noFill();
+      trailGraphics.beginShape();
+      g.pts.forEach(pt => trailGraphics.vertex(pt.x, pt.y));
+      trailGraphics.endShape();
+    });
+  }
+
+  // ── Projectile class ──────────────────────────────────────────────────────
+  class Projectile {
+    constructor(angle, v0, g) {
+      this.rad   = p.radians(angle);
+      this.v0    = v0;
+      this.g     = g;
+      this.vx    = v0 * Math.cos(this.rad);
+      this.vy    = v0 * Math.sin(this.rad);
+      this.x     = 0;
+      this.y     = 0;
+      this.t     = 0;
+      this.pts   = [];
+      this.landed = false;
+
+      // Pre-calculate
+      this.range      = (v0 * v0 * Math.sin(2 * this.rad)) / g;
+      this.maxHeight  = (v0 * v0 * Math.sin(this.rad) ** 2) / (2 * g);
+      this.totalTime  = (2 * v0 * Math.sin(this.rad)) / g;
+      this.peakX      = (v0 * v0 * Math.sin(2 * this.rad)) / (2 * g) * Math.cos(this.rad);
+      this.peakX      = this.range / 2;
+
+      updateStats(this);
+    }
+
+    update() {
+      if (this.landed) return;
+      this.t += 0.016; // ~60fps timestep in seconds
+
+      this.x = this.v0 * Math.cos(this.rad) * this.t;
+      this.y = this.v0 * Math.sin(this.rad) * this.t - 0.5 * this.g * this.t * this.t;
+
+      const px = ORIGIN.x + this.x * SCALE;
+      const py = groundY  - this.y * SCALE;
+      this.pts.push({ x: px, y: py });
+
+      if (this.y <= 0 && this.t > 0.05) {
+        this.landed = true;
+        this.y = 0;
+        // Save to ghosts
+        if (document.getElementById('showGhosts').checked) {
+          ghosts.push({ pts: [...this.pts] });
+          if (ghosts.length > 6) ghosts.shift();
+          redrawGhosts();
+        }
+      }
+    }
+
+    drawTrail() {
+      if (this.pts.length < 2) return;
+      for (let i = 1; i < this.pts.length; i++) {
+        const alpha = p.map(i, 0, this.pts.length, 30, 220);
+        const w     = p.map(i, 0, this.pts.length, 0.5, 2.5);
+        p.stroke(249, 115, 22, alpha);
+        p.strokeWeight(w);
+        p.line(this.pts[i - 1].x, this.pts[i - 1].y, this.pts[i].x, this.pts[i].y);
+      }
+    }
+
+    drawBall() {
+      if (this.landed) return;
+      const px = ORIGIN.x + this.x * SCALE;
+      const py = groundY  - this.y * SCALE;
+
+      // Glow
+      const glowGrad = p.drawingContext.createRadialGradient(px, py, 0, px, py, 18);
+      glowGrad.addColorStop(0,   'rgba(249,115,22,0.4)');
+      glowGrad.addColorStop(1,   'rgba(249,115,22,0)');
+      p.drawingContext.fillStyle = glowGrad;
+      p.drawingContext.beginPath();
+      p.drawingContext.arc(px, py, 18, 0, Math.PI * 2);
+      p.drawingContext.fill();
+
+      // Ball
+      p.fill(249, 115, 22);
+      p.noStroke();
+      p.ellipse(px, py, 14, 14);
+
+      // Highlight
+      p.fill(255, 200, 150, 180);
+      p.ellipse(px - 2, py - 2, 5, 5);
+
+      // Time label
+      p.fill(200, 200, 200, 200);
+      p.textSize(10);
+      p.textAlign(p.LEFT);
+      p.text('t=' + this.t.toFixed(1) + 's', px + 10, py - 8);
+    }
+
+    drawVectors() {
+      if (this.landed) return;
+      const px = ORIGIN.x + this.x * SCALE;
+      const py = groundY  - this.y * SCALE;
+      const curVy = this.v0 * Math.sin(this.rad) - this.g * this.t;
+      const curVx = this.v0 * Math.cos(this.rad);
+      const vecScale = 1.8;
+
+      // vx (blue)
+      p.stroke(56, 189, 248, 200);
+      p.strokeWeight(2);
+      p.fill(56, 189, 248, 200);
+      drawArrow(px, py, px + curVx * vecScale, py);
+
+      // vy (green/red)
+      const vyCol = curVy > 0 ? [74, 222, 128] : [248, 113, 113];
+      p.stroke(...vyCol, 200);
+      p.fill(...vyCol, 200);
+      drawArrow(px, py, px, py - curVy * vecScale);
+
+      // Resultant
+      p.stroke(249, 115, 22, 160);
+      p.fill(249, 115, 22, 160);
+      p.strokeWeight(1.5);
+      drawArrow(px, py, px + curVx * vecScale, py - curVy * vecScale);
+
+      // Labels
+      p.noStroke();
+      p.fill(56, 189, 248, 200);
+      p.textSize(10);
+      p.textAlign(p.CENTER);
+      p.text('vₓ=' + curVx.toFixed(0), px + curVx * vecScale / 2, py - 8);
+      p.fill(...vyCol, 200);
+      p.textAlign(p.LEFT);
+      p.text('vy=' + curVy.toFixed(0), px + 6, py - curVy * vecScale / 2);
+    }
+  }
+
+  // ── API ───────────────────────────────────────────────────────────────────
+  p.fire = () => {
+    projectile = new Projectile(angle, velocity, gravity);
+    launched   = true;
+  };
+
+  p.clear_ = () => {
+    projectile = null;
+    launched   = false;
+    ghosts     = [];
+    trailGraphics.clear();
+    clearStats();
+  };
+
+  // lineDash helper
+  p5.prototype.setLineDash = function(list) {
+    this.drawingContext.setLineDash(list);
+  };
+};
+
+const myP5 = new p5(sketch);
+
+// ─── Stats helpers ────────────────────────────────────────────────────────────
+function updateStats(proj) {
+  document.getElementById('statRange').textContent  = proj.range.toFixed(1) + ' m';
+  document.getElementById('statHeight').textContent = proj.maxHeight.toFixed(1) + ' m';
+  document.getElementById('statTime').textContent   = proj.totalTime.toFixed(2) + ' s';
+  document.getElementById('statSpeed').textContent  = proj.v0.toFixed(1) + ' m/s';
+  document.getElementById('rangeCard').classList.add('highlight');
+}
+
+function clearStats() {
+  ['statRange','statHeight','statTime','statSpeed'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+  document.getElementById('rangeCard').classList.remove('highlight');
+}
+
+// ─── Equation updater ─────────────────────────────────────────────────────────
+function updateEquations() {
+  const rad  = Math.PI / 180 * angle;
+  const v    = velocity;
+  const g    = gravity;
+  document.getElementById('eqR').textContent  = (v*v*Math.sin(2*rad)/g).toFixed(1) + ' m';
+  document.getElementById('eqH').textContent  = (v*v*Math.sin(rad)**2/(2*g)).toFixed(1) + ' m';
+  document.getElementById('eqT').textContent  = (2*v*Math.sin(rad)/g).toFixed(2) + ' s';
+  document.getElementById('eqVx').textContent = (v*Math.cos(rad)).toFixed(1) + ' m/s';
+  document.getElementById('eqVy').textContent = (v*Math.sin(rad)).toFixed(1) + ' m/s';
+}
+
+// ─── Controls ─────────────────────────────────────────────────────────────────
+document.getElementById('angleSlider').addEventListener('input', function() {
+  angle = +this.value;
+  document.getElementById('angleVal').textContent = angle + '°';
+  updateEquations();
+});
+
+document.getElementById('velSlider').addEventListener('input', function() {
+  velocity = +this.value;
+  document.getElementById('velVal').textContent = velocity + ' m/s';
+  updateEquations();
+});
+
+document.getElementById('gravSlider').addEventListener('input', function() {
+  gravity = this.value / 10;
+  document.getElementById('gravVal').textContent = gravity.toFixed(1) + ' m/s²';
+  updateEquations();
+});
+
+document.getElementById('fireBtn').addEventListener('click', () => myP5.fire());
+document.getElementById('clearBtn').addEventListener('click', () => myP5.clear_());
+
+// Fire on spacebar
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); myP5.fire(); }
+  if (e.code === 'KeyC')  myP5.clear_();
+});
+</script>
+</body>
+</html>
